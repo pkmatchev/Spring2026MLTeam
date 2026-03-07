@@ -76,7 +76,7 @@ def p_net(A_vec, weights, biases, inp):
         if i == len(weights) - 1:
             activations.append(softmax(z))    # last layer: softmax
         else:
-            activations.append(relu(z))
+            activations.append(A_vec(z))
     # activations[-1] is the output vector
     return activations
 
@@ -119,7 +119,7 @@ def one_epoch(training, weights, biases):
                 # hidden layers use reluPrime
                 new_delta = (weights[j].T @ delta) * reluPrime(activations[j-1])
             else:
-                # j-1 == 0 is the input layer — no activation function was applied
+                # j-1 == 0 is the input layer
                 new_delta = weights[j].T @ delta
 
             # update weight
@@ -187,7 +187,7 @@ def get_accuracy(data, weights, biases):
     return correct / len(data)
 
 
-run_model(20, 'mnist_train.csv', 'mnist_test.csv', 16, 16)
+run_model(20, 'mnist_train.csv', 'mnist_test.csv', 256, 128)
 
 
 
