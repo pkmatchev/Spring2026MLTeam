@@ -1,10 +1,10 @@
 from math import log
 import numpy as np
+import matplotlib.pyplot as plt
 
 #Activation Function and Derivative
 def sigmoid(x): return 1 / (1 + np.e**(-1*x))
 def sigmoidPrime(x): return np.e**(-1*x) / ((1 + np.e**(-1*x))**2) 
-
 
 #Some useful comversion functions
 def ListtoVector(new_list):
@@ -57,16 +57,70 @@ def read_file(file_name):
 
 #TODO A feed forward of the network where A_vec is the activation function, weights is a list of all the weight matrices, biases is a list of all the bias vectors, and inp is the input, return the output as a vector
 def p_net(A_vec, weights, biases, inp):
-    return None
+    act = inp / 255
+
+    for i in range(1, len(weights)):
+        z = np.dot(weights[i], act) + biases[i]
+        act = A_vec(z)
+    
+    return act
 
 #TODO This is where you back propogate by calculating the deltas and updating the weights and biases, try different learning rates and see what works
 def one_epoch(training, weights, biases):
+    learning_rate = 0.1
+    
+    for inputs, actual in training:
+        activations = [inputs / 255] 
+        zvalues = []
+        for i in range(1, len(weights)):
+            z = np.dot(weights[i], activations[-1]) + biases[i]
+            zvalues.append(z)
+            activations.append(sigmoid(z))
+
+        deltas = {}
+        L = len(weights) - 1
+        deltas[L] = (activations[-1] - actual) * sigmoidPrime(zvalues[-1])
+
+        for l in range(L - 1, 0, -1):
+            deltas[l] = np.dot(weights[l+1].T, deltas[l+1]) * sigmoidPrime(zvalues[l-1])
+
+        for l in range(1, len(weights)):
+            weights[l] = weights[l] - learning_rate * np.dot(deltas[l], activations[l-1].T)
+            biases[l] = biases[l] - learning_rate * deltas[l]
+    
     return weights, biases
 
 #TODO Run your model over some number of epochs should be at least 10 and display a graph that shows train and test accuracy on each Epoch
+def train_and_evaluate(training_data, test_data, weights, biases, epochs = 10):
+    train_accs = []
+    test_accs = []
 
+    for e in range(epochs):
+        weights, biases = one_epoch(training_data, weights, biases)
+        
+        train_correct = sum(int(np.argmax(p_net(sigmoid, weights, biases, x)) == np.argmax(y)) for x, y in training_data)
+        train_accs.append(train_correct / len(training_data))
 
+        test_correct = sum(int(np.argmax(p_net(sigmoid, weights, biases, x)) == np.argmax(y)) for x, y in test_data)
+        test_accs.append(test_correct / len(test_data))
+        
+        print(f"Epoch {e+1} | Train: {train_accs[-1]:.2%} | Test: {test_accs[-1]:.2%}")
+        
+    plt.plot(train_accs, label="Training Accuracy", color='blue')
+    plt.plot(test_accs, label="Testing Accuracy", color='red')
+    plt.legend()
+    plt.show()
 
+def main():
+    print("Loading data...")
+    training_data = read_file("mnist_train.csv")
+    test_data = read_file("mnist_test.csv")
 
+    layers = [784, 200, 100, 10]
+    weights, biases = architecture(layers)
 
+    print("Starting training...")
+    train_and_evaluate(training_data, test_data, weights, biases, epochs = 20)
 
+if __name__ == "__main__":
+    main()
