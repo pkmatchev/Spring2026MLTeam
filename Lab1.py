@@ -36,7 +36,7 @@ def architecture(new_list):
         biases.append(bias_matrix)
     return weights, biases
 
-#take in the CSVs and vectorize the output, would reccomend experimenting with to see exactly what happens
+#take in the CSVs and vectorize the output, would recommend experimenting with to see exactly what happens
 def read_file(file_name):
     toReturn = list()
     with open(file_name) as f:
@@ -64,7 +64,7 @@ def one_epoch(training, weights, biases):
     return weights, biases
 
 #TODO Run your model over some number of epochs should be at least 10 and display a graph that shows train and test accuracy on each Epoch
-
+print(read_file("mnist_test.csv"))
 
 
 
