@@ -1,6 +1,7 @@
 from math import log
 import numpy as np
 
+
 #Activation Function and Derivative
 def sigmoid(x): return 1 / (1 + np.e**(-1*x))
 def sigmoidPrime(x): return np.e**(-1*x) / ((1 + np.e**(-1*x))**2) 
