@@ -1,0 +1,170 @@
+from math import log
+import numpy as np
+import matplotlib.pyplot as plt
+
+#Activation Function and Derivative
+def sigmoid(x): return 1 / (1 + np.e**(-1*x))
+def sigmoidPrime(x): return np.e**(-1*x) / ((1 + np.e**(-1*x))**2) 
+
+
+#Some useful comversion functions
+def ListtoVector(new_list):
+    length = len(new_list)
+    vec = np.arange(length)
+    for i,v in enumerate(new_list):
+        vec[i] = v
+    return vec.reshape(length, 1)
+
+def VectortoList(new_vec):
+    length = (new_vec.size)
+    reshaped = new_vec.reshape(1, length)
+    new_list = list()
+    for v in reshaped[0]:
+        new_list.append(v)
+    return new_list
+
+#A function that setups your initial network including randomized weights, input is the form of a list of the number of neurons in each layer. e.g [784, x, y, 10] where x and y are the number of neurons in your hiddenn layers
+def architecture(new_list):
+    weights = list()
+    biases = list()
+    weights.append(None)
+    biases.append(None)
+    network_length = len(new_list)
+    for c in range(network_length-1):
+        weight_matrix = 2 * np.random.rand(new_list[c+1], new_list[c]) - 1
+        bias_matrix = 2 * np.random.rand(new_list[c+1],1) - 1
+        weights.append(weight_matrix)
+        biases.append(bias_matrix)
+    return weights, biases
+
+#take in the CSVs and vectorize the output, would reccomend experimenting with to see exactly what happens
+def read_file(file_name):
+    toReturn = list()
+    with open(file_name) as f:
+        for line in f:
+            image = line[0:len(line)-1].split(",")
+            output = image.pop(0)
+            in_vec = ListtoVector(image)
+            out_vec = list()
+            for c in range(10):
+                if c == int(output):
+                    out_vec.append(1)
+                else:
+                    out_vec.append(0)
+            out_vec = ListtoVector(out_vec)
+            toAppend = (in_vec,out_vec)
+            toReturn.append(toAppend)
+    return toReturn
+
+#TODO A feed forward of the network where A_vec is the activation function, weights is a list of all the weight matrices, biases is a list of all the bias vectors, and inp is the input, return the output as a vector
+def p_net(A_vec, weights, biases, inp):
+    output = inp
+    first_layer_list = A_vec(np.dot(weights[1], inp) + biases[1])
+    second_layer_list = A_vec(np.dot(weights[2], first_layer_list) + biases[2])
+    output = A_vec(np.dot(weights[3], second_layer_list) + biases[3])
+    return output
+
+#TODO This is where you back propogate by calculating the deltas and updating the weights and biases, try different learning rates and see what works
+def one_epoch(training, weights, biases, i):
+    learningRate = 0.2
+
+    for in_vec, out_vec in training:
+        input = in_vec / 255
+        actual = out_vec
+
+        z1 = np.dot(weights[1], input) + biases[1]
+        a1 = sigmoid(z1)
+
+        z2 = np.dot(weights[2], a1) + biases[2]
+        a2 = sigmoid(z2)
+
+        z3 = np.dot(weights[3], a2) + biases[3]
+        predicted = sigmoid(z3)
+
+        delta3 = (sigmoidPrime(z3) * (predicted - actual))
+        delta2 = (weights[3].T @ delta3) * sigmoidPrime(z2)
+        delta1 = (weights[2].T @ delta2) * sigmoidPrime(z1)
+
+        biases[3] = biases[3] - learningRate * delta3
+        biases[2] = biases[2] - learningRate * delta2
+        biases[1] = biases[1] - learningRate * delta1
+
+        weights[3] = weights[3] - ((learningRate * delta3) @ a2.T)
+        weights[2] = weights[2] - ((learningRate * delta2) @ a1.T)
+        weights[1] = weights[1] - ((learningRate * delta1) @ input.T)
+
+    return weights, biases
+
+#TODO Run your model over some number of epochs should be at least 10 and display a graph that shows train and test accuracy on each Epoch
+def main():
+    trainingData = read_file("mnist_train.csv")
+    testData = read_file("mnist_test.csv")
+
+    my_list = [784, 128, 64, 10]
+    weights, biases = architecture(my_list)
+    epochs = []
+    training_Acc = []
+    testing_Acc = []
+
+    i = 1
+
+    while i <= 10:
+        weights, biases = one_epoch(trainingData, weights, biases, i)
+        epochs.append(i)
+    
+        count = 0
+        correct = 0
+        
+        for in_vec, out_vec in trainingData:
+            predicted = p_net(sigmoid, weights, biases, in_vec/255)
+            guess = np.argmax(predicted)
+            real = np.argmax(out_vec)
+
+            if guess == real :
+                correct +=1
+            count +=1
+        training_Acc.append(correct/count)
+
+        plt.figure(1)
+        plt.title("Training Accuracy")
+        plt.xlabel("Epoch")
+        plt.ylabel("Training Accuracy")
+        plt.plot(epochs, training_Acc, marker = 'o')
+
+        print("Training Accuracy: ", correct/count, "   Epoch ", i)
+
+        count = 0
+        correct = 0
+
+        for in_vec, out_vec in testData:
+            predicted = p_net(sigmoid, weights, biases, in_vec/255)
+            guess = np.argmax(predicted)
+            real = np.argmax(out_vec)
+            if guess == real :
+                correct +=1
+            count +=1
+        testing_Acc.append(correct/count)
+
+        print("Testing Accuracy: ", correct/count, "   Epoch ", i)
+        
+        plt.figure(2)
+        plt.title("Testing Accuracy")
+        plt.xlabel("Epoch")
+        plt.ylabel("Testing Accuracy")
+        plt.plot(epochs, testing_Acc, marker = 'o')
+        i += 1
+
+
+
+    plt.show()
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
