@@ -101,9 +101,9 @@ def one_epoch(training, weights, biases):
         se_sum += np.sum((activations[-1] - training[i][1]) ** 2) / len(activations[-1])
 
         # check if prediction was correct for current training example (accuracy tracking)
-        predicted = np.argmax(activations[-1])
-        expected = np.argmax(training[i][1])
-        if predicted == expected:
+        predicted_number = np.argmax(activations[-1])
+        expected_number = np.argmax(training[i][1])
+        if predicted_number == expected_number:
             correct += 1
 
         # compute delta for last layer
@@ -112,9 +112,10 @@ def one_epoch(training, weights, biases):
         delta = activations[-1] - training[i][1]
 
         # loop through each layer of the network and update weights and biases
-        for j in range(len(weights) - 1,0,-1):
+        for j in range(len(weights) - 1, 0, -1):
             # calculate new delta (needs to be calculated before the weight updates)
             #new_delta = (weights[j].T @ delta) * reluPrime(activations[j-1])
+            
             if j > 1:
                 # hidden layers use reluPrime
                 new_delta = (weights[j].T @ delta) * reluPrime(activations[j-1])
