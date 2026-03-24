@@ -58,7 +58,7 @@ def relu(x):
     """
     # *** TODO ***
     # Hint: np.maximum(0, x) does this in one line
-    pass
+    return np.maximum(0, x)
 
 
 def relu_backward(dout, x):
@@ -81,7 +81,8 @@ def relu_backward(dout, x):
     """
     # *** TODO ***
     # Hint: multiply dout by a mask that is 1 where x > 0 and 0 elsewhere
-    pass
+    
+    return dout*(x>0)
 
 
 # --- Pre-implemented: softmax is tricky numerically, so it is provided ---
@@ -215,7 +216,24 @@ class ConvLayer:
         5. Cache x_padded and x.shape for the backward pass
         """
         # *** TODO ***
-        pass
+        (N, C, H, W) = x.shape
+        x_padded = np.pad(x, ((0,0),(0,0),(self.padding,self.padding),(self.padding,self.padding)), mode='constant')
+        H_out = (H + 2*self.padding - self.kernel_size) // self.stride + 1
+        W_out = (W + 2*self.padding - self.kernel_size) // self.stride + 1
+        out = np.zeros((N, self.num_filters, H_out, W_out))
+
+        
+        for f in range(self.num_filters):
+            for i in range(H_out):
+                for j in range(W_out):
+                    patch = x_padded[:, :, i*self.stride : i*self.stride+self.kernel_size, j*self.stride : j*self.stride+self.kernel_size]
+                    out[:, f, i, j] = np.sum(patch * self.W[f], axis=(1,2,3)) + self.b[f]
+        self.cache = (x_padded, x.shape)
+        return out
+
+
+
+
 
     def backward(self, dout):
         """
@@ -242,7 +260,29 @@ class ConvLayer:
         4. Strip padding from dx_padded to get dx (if padding > 0)
         """
         # *** TODO ***
-        pass
+
+        x_padded, (N, C, H, W) = self.cache
+        H_out, W_out = dout.shape[2], dout.shape[3]
+
+        dW = np.zeros(self.W.shape)
+        db = np.zeros(self.b.shape)
+        dx_padded = np.zeros(x_padded.shape)
+        db = np.sum(dout, axis=(0, 2, 3))
+        for f in range(self.num_filters):
+            for i in range(H_out):
+                for j in range(W_out):
+                    patch   = x_padded[:, :, i*self.stride:i*self.stride+self.kernel_size, j*self.stride:j*self.stride+self.kernel_size]
+                    dout_ij = dout[:, f, i, j]
+                    dW[f]  += np.sum(dout_ij[:,None,None,None] * patch, axis=0)
+                    dx_padded[:, :, i*self.stride:i*self.stride+self.kernel_size, j*self.stride:j*self.stride+self.kernel_size] += dout_ij[:,None,None,None] * self.W[f]
+        
+        if(self.padding>0):
+            dx = dx_padded[:, :, self.padding:self.padding+H, self.padding:self.padding+W]
+        else:
+            dx = dx_padded
+        self.dW = dW
+        self.db = db
+        return dx
 
     # --- Pre-implemented: momentum update is the same for every layer ---
     def update(self, lr, momentum=0.9):
@@ -354,7 +394,8 @@ class FCLayer:
         2. Return x @ self.W + self.b
         """
         # *** TODO ***
-        pass
+        self.x = x
+        return x @ self.W + self.b
 
     def backward(self, dout):
         """
@@ -377,8 +418,13 @@ class FCLayer:
         Store dW and db as self.dW and self.db, then return dx.
         """
         # *** TODO ***
-        pass
+        dW = self.x.T  @  dout
+        db = np.sum(dout, axis=0) 
+        dx = dout  @  self.W.T  
+        self.dW = dW
+        self.db = db
 
+        return dx
     # --- Pre-implemented ---
     def update(self, lr, momentum=0.9):
         self.vW = momentum * self.vW - lr * self.dW
@@ -418,12 +464,12 @@ class CNN:
             fc1    — FCLayer: 400 → 128
             fc2    — FCLayer: 128 → 10
         """
-        self.conv1 = None   # *** TODO ***
-        self.pool1 = None   # *** TODO ***
-        self.conv2 = None   # *** TODO ***
-        self.pool2 = None   # *** TODO ***
-        self.fc1   = None   # *** TODO ***
-        self.fc2   = None   # *** TODO ***
+        self.conv1 = ConvLayer(1, 8, 3)   # *** TODO ***
+        self.pool1 = MaxPoolLayer(2, 2)   # *** TODO ***
+        self.conv2 = ConvLayer(8, 16, 3)   # *** TODO ***
+        self.pool2 = MaxPoolLayer(2, 2)   # *** TODO ***
+        self.fc1   = FCLayer(400, 128)   # *** TODO ***
+        self.fc2   = FCLayer(128, 10)   # *** TODO ***
 
         # These store intermediate values needed for backprop
         self.relu1_input = None
@@ -457,7 +503,21 @@ class CNN:
             x = relu(x)                   # then activate
         """
         # *** TODO ***
-        pass
+        x=self.conv1.forward(x)
+        self.relu1_input = x
+        x = relu(x)
+        x = self.pool1.forward(x)
+        x = self.conv2.forward(x)
+        self.relu2_input = x
+        x = relu(x)
+        x = self.pool2.forward(x)
+        self.flat_shape = x.shape
+        x = x.reshape(x.shape[0], -1)
+        x = self.fc1.forward(x)
+        self.relu3_input = x
+        x = relu(x)
+        y = softmax(self.fc2.forward(x))
+        return y
 
     def backward(self, grad):
         """
@@ -482,7 +542,16 @@ class CNN:
             grad → conv1.backward  → (grad not used further)
         """
         # *** TODO ***
-        pass
+        grad = self.fc2.backward(grad)
+        grad = relu_backward(grad, self.relu3_input)
+        grad = self.fc1.backward(grad)
+        grad = grad = grad.reshape(self.flat_shape)
+        grad = self.pool2.backward(grad)
+        grad = relu_backward(grad, self.relu2_input)
+        grad = self.conv2.backward(grad)
+        grad = self.pool1.backward(grad)
+        grad = relu_backward(grad, self.relu1_input)
+        grad = self.conv1.backward(grad)
 
     def update(self, lr, momentum=0.9):
         """
@@ -493,7 +562,10 @@ class CNN:
         (MaxPoolLayer has no weights, so skip pool1 and pool2)
         """
         # *** TODO ***
-        pass
+        self.conv1.update(lr, momentum)
+        self.conv2.update(lr, momentum)
+        self.fc1.update(lr, momentum)
+        self.fc2.update(lr, momentum)
 
     # --- Pre-implemented ---
     def predict(self, x):
