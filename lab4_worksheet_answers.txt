@@ -1,0 +1,18 @@
+Vedant Yadav
+
+Lab 4 - Attention Mechanism Worksheet
+
+1. What does the softmax function do in attention?
+Softmax normalizes the attention scores so they sum to 1, creating a probability distribution over the input tokens.
+
+2. What is the purpose of the causal mask?
+The causal mask prevents tokens from attending to future positions, ensuring the model only uses information from previous tokens (left-to-right processing).
+
+3. What are the three main components of scaled dot-product attention?
+Query (Q), Key (K), and Value (V) matrices.
+
+4. Why do we scale by sqrt(d_k) in attention?
+Scaling by sqrt(d_k) prevents the dot products from becoming too large, which would cause the softmax to saturate and produce very sharp distributions.
+
+5. How does attention help with the vanishing gradient problem?
+Attention creates direct connections between distant tokens, allowing gradients to flow directly without passing through many intermediate layers.
